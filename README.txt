@@ -1,4 +1,6 @@
 Краткая инструкция по пользованию:
+Необходимо иметь зависимости: python3 python3-bpfcc bpfcc-tools python3-pip linux-headers-$(uname -r)
+Зависимости pip: bcc argparse
 Запуск скрипта - "sudo python3 ./firewall.py"
 Файл конфигурации и логов блокировок создадутся автоматически
 Настройка firewall'a производится двумя способами:
