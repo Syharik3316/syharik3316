@@ -7,8 +7,8 @@ import os
 from enum import IntEnum
 from datetime import datetime
 
-CONFIG_FILE = '/home/syharik/FWM/firewall.conf'
-LOG_FILE = '/home/syharik/FWM/firewall.log'
+CONFIG_FILE = './firewall.conf'
+LOG_FILE = './firewall.log'
 
 class TrafficType(IntEnum):
     UNKNOWN = 0
