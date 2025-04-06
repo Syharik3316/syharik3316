@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vice Bloody - Управление портами</title>
+    <link rel="stylesheet" href="style.css">
+    <script src=".js"></script>
+</head>
+<body>
+    <div class="side-decoration left"></div>
+    <div class="side-decoration right"></div>
+    <div class="corner-decoration top-left"></div>
+    <div class="corner-decoration bottom-right"></div>
+
+    <div class="container">
+        <div class="team-name">VICE BLOODY</div>
+        <h1>Управление сетевыми портами</h1>
+
+        <div class="status online">
+            СЕРВИС ПОРТОВ АКТИВЕН. СТАТУС: ONLINE
+        </div>
+
+        <p>Панель управления сетевыми портами серверов Vice Bloody</p>
+        <p>Все действия логируются и требуют подтверждения</p>
+
+        <div class="buttons">
+            <button class="btn" onclick="showPortForm()">Добавить порт</button>
+            <button class="btn" onclick="showRemovePortForm()">Удалить порт</button>
+            <button class="btn" onclick="showPortList()">Список портов</button>
+        </div>
+
+        <div class="services">
+            <div class="service-item">
+                <h3>Активные порты</h3>
+                <ul class="port-list" id="open-ports">
+                    <li><span class="port-status open"></span> 80 (HTTP)</li>
+                    <li><span class="port-status open"></span> 443 (HTTPS)</li>
+                    <li><span class="port-status open"></span> 22 (SSH)</li>
+                    <li><span class="port-status open"></span> 25 (SMTP)</li>
+                    <li><span class="port-status open"></span> 53 (DNS)</li>
+                </ul>
+
+                <div class="stats">
+                    <div class="stat-item">
+                        <p>Всего портов</p>
+                        <div class="stat-value" id="total-ports">5</div>
+                    </div>
+                    <div class="stat-item">
+                        <p>Последнее обновление</p>
+                        <div class="stat-value" id="last-update">2 мин назад</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Vice Bloody Port Management System | © 2025 Все права защищены</p>
+            <p>Версия: 4.0.0 | Сборка: #VB-PORTS-2025-01-15</p>
+        </footer>
+    </div>
+</body>
+</html>
