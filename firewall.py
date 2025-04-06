@@ -22,7 +22,7 @@ def clear_screen():
 def show_menu():
     clear_screen()
     print("╔══════════════════════════════════╗")
-    print("║    Менеджер firewall'a v2.0      ║")
+    print("║  Менеджер firewall'a by syharik  ║")
     print("╠══════════════════════════════════╣")
     print("║ 1. Показать текущие настройки    ║")
     print("║ 2. Доб. разрешенные порты        ║")
@@ -144,7 +144,7 @@ def interactive_add_ports():
         print(f"\nПорты {ports} успешно добавлены!")
         show_settings()
     else:
-        print("\nПорт не был введен.")
+        print("\nПорты не были введены.")
     input("\nНажмите Enter для продолжения...")
 
 def interactive_remove_ports():
@@ -161,7 +161,7 @@ def interactive_remove_ports():
 def toggle_setting(setting_name, current_value):
     new_value = not current_value
     update_config(setting_name, new_value)
-    print(f"\n{setting_name.replace('_', ' ').title()} set to {'Enabled' if new_value else 'Disabled'}")
+    print(f"\n{setting_name.replace('_', ' ').title()} set to {'Включено' if new_value else 'Выключено'}")
     return new_value
 
 def advanced_settings():
@@ -172,9 +172,9 @@ def advanced_settings():
         print(" ╔══════════════════════════════════╗")
         print(" ║     Дополнительные настройки     ║")
         print(" ╠══════════════════════════════════╣")
-        print(f"║ 1. Всё кроме L7: {'✔' if strict_mode else '✖'}            ║")
-        print(f"║ 2. Разрешено DNS: {'✔' if allow_dns else '✖'}                   ║")
-        print(f"║ 3. Разрешено ICMP: {'✔' if allow_icmp else '✖'}                 ║")
+        print(f"   1. Всё кроме L7: {'✔' if strict_mode else '✖'}")
+        print(f"   2. Разрешено DNS: {'✔' if allow_dns else '✖'}")
+        print(f"   3. Разрешено ICMP: {'✔' if allow_icmp else '✖'}")
         print(" ║ 4. Назад в главное меню          ║")
         print(" ╚══════════════════════════════════╝")
         
@@ -198,6 +198,7 @@ def run_firewall():
     default_ports, custom_ports, strict_mode, allow_dns, allow_icmp = load_config()
     allowed_ports = list(set(default_ports + custom_ports))
     
+    # Generate BPF program based on settings
     bpf_text = BPF_TEMPLATE.replace('//STRICT_MODE', '1' if strict_mode else '0')
     bpf_text = bpf_text.replace('//ALLOW_DNS', '1' if allow_dns else '0')
     bpf_text = bpf_text.replace('//ALLOW_ICMP', '1' if allow_icmp else '0')
@@ -269,6 +270,7 @@ enum traffic_type {
     TRAFFIC_OTHER = 5
 };
 
+// Check for HTTP traffic
 static int is_http(struct tcphdr *tcp, void *data_end) {
     if (tcp->syn || tcp->fin || tcp->rst) return 0;
     if (!tcp->psh) return 0;  // No payload data
@@ -276,6 +278,7 @@ static int is_http(struct tcphdr *tcp, void *data_end) {
     char *payload = (char *)(tcp + 1);
     if ((void *)(payload + 8) > data_end) return 0;
     
+    // Check for HTTP methods
     if (payload[0] == 'G' && payload[1] == 'E' && payload[2] == 'T' && payload[3] == ' ') return 1;
     if (payload[0] == 'P' && payload[1] == 'O' && payload[2] == 'S' && payload[3] == 'T') return 1;
     if (payload[0] == 'H' && payload[1] == 'E' && payload[2] == 'A' && payload[3] == 'D') return 1;
@@ -293,7 +296,6 @@ static int is_https(struct tcphdr *tcp, void *data_end) {
     char *payload = (char *)(tcp + 1);
     if ((void *)(payload + 5) > data_end) return 0;
     
-    // TLS handshake
     if (payload[0] == 0x16 && payload[1] == 0x03) {
         // TLS versions 1.0-1.3
         if (payload[2] >= 0x01 && payload[2] <= 0x04) return 1;
@@ -346,7 +348,6 @@ int filter_traffic(struct xdp_md *ctx) {
             bpf_trace_printk("BLOCKED: Port %d not in allowed list\\n", dest_port);
             return XDP_DROP;
         }
-
 
         if (//STRICT_MODE) {
             if (dest_port == 80 || src_port == 80) {
@@ -419,17 +420,17 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1] == '--add':
             if len(sys.argv) < 3:
-                print("Error: sвведите порты через запятую")
+                print("Error: Введите порты через запятую")
                 sys.exit(1)
             update_ports('add', sys.argv[2].split(','))
-            print(f"Added ports: {sys.argv[2]}")
+            print(f"Добавлены порты: {sys.argv[2]}")
             show_settings()
         elif sys.argv[1] == '--del':
             if len(sys.argv) < 3:
-                print("Error: sвведите порты через запятую")
+                print("Error: Введите порты через запятую")
                 sys.exit(1)
             update_ports('del', sys.argv[2].split(','))
-            print(f"Removed ports: {sys.argv[2]}")
+            print(f"Удалены порты: {sys.argv[2]}")
             show_settings()
         elif sys.argv[1] == '--list':
             show_settings()
