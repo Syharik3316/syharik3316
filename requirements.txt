@@ -1,4 +1,2 @@
-python3
-python3-bpfcc 
-bpfcc-tools 
-python3-pip
+bcc
+argparse
