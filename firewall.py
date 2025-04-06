@@ -198,7 +198,6 @@ def run_firewall():
     default_ports, custom_ports, strict_mode, allow_dns, allow_icmp = load_config()
     allowed_ports = list(set(default_ports + custom_ports))
     
-    # Generate BPF program based on settings
     bpf_text = BPF_TEMPLATE.replace('//STRICT_MODE', '1' if strict_mode else '0')
     bpf_text = bpf_text.replace('//ALLOW_DNS', '1' if allow_dns else '0')
     bpf_text = bpf_text.replace('//ALLOW_ICMP', '1' if allow_icmp else '0')
@@ -261,7 +260,6 @@ BPF_TEMPLATE = """
 
 BPF_HASH(allowed_ports, u16, u8);
 
-// Traffic classification
 enum traffic_type {
     TRAFFIC_UNKNOWN = 0,
     TRAFFIC_HTTP = 1,
@@ -271,7 +269,6 @@ enum traffic_type {
     TRAFFIC_OTHER = 5
 };
 
-// Check for HTTP traffic
 static int is_http(struct tcphdr *tcp, void *data_end) {
     if (tcp->syn || tcp->fin || tcp->rst) return 0;
     if (!tcp->psh) return 0;  // No payload data
@@ -279,20 +276,17 @@ static int is_http(struct tcphdr *tcp, void *data_end) {
     char *payload = (char *)(tcp + 1);
     if ((void *)(payload + 8) > data_end) return 0;
     
-    // Check for HTTP methods
     if (payload[0] == 'G' && payload[1] == 'E' && payload[2] == 'T' && payload[3] == ' ') return 1;
     if (payload[0] == 'P' && payload[1] == 'O' && payload[2] == 'S' && payload[3] == 'T') return 1;
     if (payload[0] == 'H' && payload[1] == 'E' && payload[2] == 'A' && payload[3] == 'D') return 1;
     if (payload[0] == 'P' && payload[1] == 'U' && payload[2] == 'T' && payload[3] == ' ') return 1;
     if (payload[0] == 'D' && payload[1] == 'E' && payload[2] == 'L' && payload[3] == 'E') return 1;
     
-    // Check for HTTP response
     if (payload[0] == 'H' && payload[1] == 'T' && payload[2] == 'T' && payload[3] == 'P') return 1;
     
     return 0;
 }
 
-// Check for HTTPS/TLS traffic
 static int is_https(struct tcphdr *tcp, void *data_end) {
     if (tcp->syn || tcp->fin || tcp->rst) return 0;
     
@@ -308,18 +302,13 @@ static int is_https(struct tcphdr *tcp, void *data_end) {
     return 0;
 }
 
-// Check for DNS traffic (UDP port 53)
 static int is_dns(struct udphdr *udp, void *data_end) {
-    // DNS usually uses UDP, but could be TCP (not handled here)
     char *payload = (char *)(udp + 1);
     if ((void *)(payload + 12) > data_end) return 0;
     
-    // Simple check for DNS query/response
-    // Could add more thorough DNS protocol checking
     return 1;
 }
 
-// Main filtering function
 int filter_traffic(struct xdp_md *ctx) {
     void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
@@ -328,7 +317,6 @@ int filter_traffic(struct xdp_md *ctx) {
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
 
-    // Only IPv4 for now
     if (eth->h_proto != bpf_htons(ETH_P_IP))
         return XDP_PASS;
 
@@ -336,7 +324,6 @@ int filter_traffic(struct xdp_md *ctx) {
     if ((void *)(ip + 1) > data_end)
         return XDP_PASS;
 
-    // Handle ICMP if allowed
     if (ip->protocol == IPPROTO_ICMP) {
         if (//ALLOW_ICMP) {
             return XDP_PASS;
@@ -346,7 +333,6 @@ int filter_traffic(struct xdp_md *ctx) {
         }
     }
 
-    // Handle TCP traffic
     if (ip->protocol == IPPROTO_TCP) {
         struct tcphdr *tcp = (struct tcphdr *)(ip + 1);
         if ((void *)(tcp + 1) > data_end)
@@ -355,14 +341,13 @@ int filter_traffic(struct xdp_md *ctx) {
         u16 dest_port = bpf_ntohs(tcp->dest);
         u16 src_port = bpf_ntohs(tcp->source);
 
-        // Check if port is allowed
         u8 *allowed = allowed_ports.lookup(&dest_port);
         if (!allowed && !allowed_ports.lookup(&src_port)) {
             bpf_trace_printk("BLOCKED: Port %d not in allowed list\\n", dest_port);
             return XDP_DROP;
         }
 
-        // In strict mode, verify L7 protocol
+
         if (//STRICT_MODE) {
             if (dest_port == 80 || src_port == 80) {
                 if (!is_http(tcp, data_end)) {
@@ -381,7 +366,6 @@ int filter_traffic(struct xdp_md *ctx) {
         return XDP_PASS;
     }
 
-    // Handle UDP traffic (mainly for DNS)
     if (ip->protocol == IPPROTO_UDP) {
         struct udphdr *udp = (struct udphdr *)(ip + 1);
         if ((void *)(udp + 1) > data_end)
@@ -390,19 +374,16 @@ int filter_traffic(struct xdp_md *ctx) {
         u16 dest_port = bpf_ntohs(udp->dest);
         u16 src_port = bpf_ntohs(udp->source);
 
-        // Allow DNS if configured
         if (//ALLOW_DNS && (dest_port == 53 || src_port == 53)) {
             if (is_dns(udp, data_end)) {
                 return XDP_PASS;
             }
         }
 
-        // Block all other UDP by default
         bpf_trace_printk("BLOCKED: UDP traffic on port %d\\n", dest_port);
         return XDP_DROP;
     }
 
-    // Block all other protocols
     bpf_trace_printk("BLOCKED: Non-TCP/UDP/ICMP protocol\\n");
     return XDP_DROP;
 }
